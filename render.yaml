@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: a-chain-goes-forward-a-graph-can-go-back-thats
+    runtime: node
+    plan: free
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+    buildCommand: npm run check
+    startCommand: npm start
+    healthCheckPath: /health

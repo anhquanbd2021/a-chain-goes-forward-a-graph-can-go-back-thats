@@ -1,0 +1,16 @@
+{
+  "name": "a-chain-goes-forward-a-graph-can-go-back-thats-demo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A Chain Goes Forward A Graph Can Go Back Thats Lab — companion interactive demo",
+  "scripts": {
+    "start": "node app/server.js",
+    "trace": "node scripts/trace.mjs",
+    "test": "node --test \"test/*.test.mjs\"",
+    "check": "npm test && npm run trace"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

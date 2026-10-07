@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Guide to the Loop Line lab — how the rail, the three executor modes, the state tape, and the trace ledger prove that only a graph can go back.">
+<title>Loop Line Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400..700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap">
+<link rel="stylesheet" href="/styles.css">
+<!-- pb-shell --><link rel="stylesheet" href="./pb-shell.css"><!-- pb-shell --><!-- pb-back --><link rel="stylesheet" href="./pb-back.css"><!-- pb-back --></head>
+<body>
+<a class="skip-link" href="#main">Skip to the guide</a>
+<main id="main">
+  <nav aria-label="Primary"><a href="/">Lab</a><a aria-current="page" href="/guide.html">Guide</a><a href="https://github.com/anhquanbd2021/a-chain-goes-forward-a-graph-can-go-back-thats">Source</a></nav>
+
+  <header class="guide-intro">
+    <p class="eyebrow">Mechanism walkthrough</p>
+    <h1>Same scenario, three topologies</h1>
+    <p class="lede">A seeded marketing agent runs <em>brief → research → plan → create → review</em>, where <code>review</code> scores draft one at 0.42 against a 0.80 bar. What happens next depends on nothing but the shape of the edges. This page maps each lab feature to what it proves.</p>
+    <p class="warning"><strong>Honest limits.</strong> Timings are deterministic fixtures, not wall-clock measurements; the simulated <code>interrupt()</code> is a pause flag, not durable storage. The topology lesson is real.</p>
+  </header>
+
+  <section class="panel">
+    <p class="eyebrow">Start here</p>
+    <h2>What this lab proves</h2>
+    <p>Pick <em>graph</em> and press <strong>Run to end</strong>: review fails at 0.42, the vermilion back-edge fires, attempt 2 drafts with research and plan intact, passes at 0.91, and <code>interrupt()</code> freezes the run for approval. Now run <em>chain</em> — same brief, same draft, dead end. Then <em>while</em>: watch the state tape blank on every restart while the ledger keeps the receipts — 18.6 s burned and still off brand, where the graph spends 10.1 s and ships.</p>
+    <p><a class="try" href="/">Open the lab</a></p>
+  </section>
+
+  <section class="guide-section">
+    <p class="eyebrow">The mechanisms</p>
+    <h2>Features and what each proves</h2>
+    <div class="control-grid">
+      <article class="panel control"><span class="control-number">Feature 01</span><h3>The rail</h3><p>Seven stations — <code>brief research plan create review approve publish</code> — drawn as a transit line. Every forward edge points right; the dotted vermilion arc curving back from <code>review</code> to <code>create</code> is the only edge a chain cannot draw.</p><dl><dt>Proves</dt><dd>topology is the feature — the nodes never change.</dd><dt>Key detail</dt><dd>in chain mode the arc renders as a severed stub.</dd></dl></article>
+      <article class="panel control"><span class="control-number">Feature 02</span><h3>Mode: chain</h3><p>A DAG executor. <code>review</code> exits with no outgoing route for failure, so the run dead-ends holding the 0.42 draft — research and plan produced, then stranded.</p><dl><dt>Proves</dt><dd>a chain physically cannot express "try again".</dd><dt>Key detail</dt><dd>5 spans, 6.2 s spent, status <code>dead-ended</code>.</dd></dl></article>
+      <article class="panel control"><span class="control-number">Feature 03</span><h3>Mode: while</h3><p>The naive patch — <code>while (!onBrand) rerun()</code>. Each restart re-invokes the whole chain cold, so <code>attempts</code> resets to 1 and the same 0.42 draft comes back. Emits a <code>state-lost</code> event per restart.</p><dl><dt>Proves</dt><dd>retries without memory burn budget and still fail.</dd><dt>Key detail</dt><dd>3 cycles × 6.2 s = 18.6 s; ledger shows research re-fetched 3×.</dd></dl></article>
+      <article class="panel control"><span class="control-number">Feature 04</span><h3>Mode: graph</h3><p>Checkpointed cyclic execution. The <code>review → create</code> back-edge carries accumulated state into the retry; attempt 2 scores 0.91 and the run continues to <code>approve</code>.</p><dl><dt>Proves</dt><dd>the graph's shape IS the retry policy.</dd><dt>Key detail</dt><dd>10.1 s total, 3.1 s retry cost, status <code>completed</code>.</dd></dl></article>
+      <article class="panel control"><span class="control-number">Feature 05</span><h3>The state tape</h3><p>A checkpoint strip under the rail — <code>attempts · research · plan · draft · score · ms</code>. In graph mode the cells stay lit through the retry; in while mode they visibly blank on every restart.</p><dl><dt>Proves</dt><dd>what a checkpoint is: state that survives going back.</dd><dt>Key detail</dt><dd>wiped cells are the argument — watch them in while mode.</dd></dl></article>
+      <article class="panel control"><span class="control-number">Feature 06</span><h3>The trace ledger</h3><p>A LangSmith-style span table — one row per node execution, appended never overwritten. Vermilion rows mark the retry: <code>create@2</code> and <code>review@2</code>, 3.1 s of the 10.1 s total.</p><dl><dt>Proves</dt><dd>observability answers "what did the retry cost?"</dd><dt>Key detail</dt><dd>the ledger is framework-agnostic — it logs all three modes.</dd></dl></article>
+      <article class="panel control"><span class="control-number">Feature 07</span><h3>interrupt() → Approve</h3><p>On a passed review the graph doesn't publish — it freezes at <code>approve</code> with state checkpointed. The Approve button calls <code>resumeRun</code> and the run picks up exactly where it left off.</p><dl><dt>Proves</dt><dd>a human-in-the-loop pause is one line, not an architecture.</dd><dt>Key detail</dt><dd>status moves <code>awaiting-approval → completed</code>.</dd></dl></article>
+      <article class="panel control"><span class="control-number">Feature 08</span><h3>/api/run</h3><p>The server drives the same <code>lab.mjs</code> the browser imports — <code>GET /api/run?mode=graph</code> returns the full ledger, totals, and resting status as JSON.</p><dl><dt>Proves</dt><dd>one deterministic model, three drivers: UI, CLI, API.</dd><dt>Key detail</dt><dd>try <code>?mode=chain</code> and <code>?mode=while</code>.</dd></dl></article>
+    </div>
+  </section>
+
+  <section class="guide-section">
+    <p class="eyebrow">Architecture</p>
+    <h2>How the demo is built</h2>
+    <div class="table-wrap panel" tabindex="0" role="region" aria-label="Architecture table — layer, behavior, evidence">
+      <table>
+        <thead><tr><th>Layer</th><th>Behavior</th><th>Evidence</th></tr></thead>
+        <tbody>
+          <tr><td>Model</td><td>Deterministic run machine: three executors, seeded drafts, checkpointed state, span ledger.</td><td><code>public/lab.mjs</code></td></tr>
+          <tr><td>Scenarios</td><td>The three-mode fixtures re-exported for UI, CLI, and tests.</td><td><code>public/scenarios.mjs</code></td></tr>
+          <tr><td>UI</td><td>Plain-JS DOM wiring: rail, back-edge arc, state tape, ledger, controls.</td><td><code>public/app.js</code></td></tr>
+          <tr><td>Server</td><td>Zero-dependency static host plus /health, /version, /api/run.</td><td><code>app/server.js</code></td></tr>
+          <tr><td>CLI</td><td>Prints the span ledger for all three modes side by side.</td><td><code>scripts/trace.mjs</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="guide-section">
+    <p class="eyebrow">Run locally</p>
+    <h2>Inspect the evidence</h2>
+    <pre class="code-block">npm test         # unit suite + end-to-end server suite
+npm run trace    # CLI: span ledgers for chain / while / graph
+npm run check    # both
+npm start        # serve the lab on :3000</pre>
+    <p>Try <code>node scripts/trace.mjs --mode while</code> to watch the ledger remember what the state forgot.</p>
+  </section>
+
+  <section class="guide-section panel">
+    <p class="eyebrow">Limits</p>
+    <h2>What this demo does not claim</h2>
+    <ul>
+      <li>Timings are deterministic fixtures that mirror the article's numbers, not measurements of real LLM latency.</li>
+      <li>Real model output is stochastic — attempt 1 always scoring 0.42 is the seeded failure, not a claim about chains.</li>
+      <li>The simulated <code>interrupt()</code> is a pause flag in memory; real durable execution persists checkpoints across restarts.</li>
+      <li>The ledger mimics a trace view; it is not an observability platform, and it lives in this demo only.</li>
+      <li>A passing run means "this topology can go back" — never "the agent is correct".</li>
+    </ul>
+    <p><a class="try" href="/">Return to Lab</a></p>
+  </section>
+</main>
+<!-- pb-shell --><a class="pb-shell" href="https://github.com/anhquanbd2021/a-chain-goes-forward-a-graph-can-go-back-thats" title="a-chain-goes-forward-a-graph-can-go-back-thats — an Article Playbook demo (view source)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2" y="2" width="9" height="9" rx="2" fill="#e4572e"/><rect x="13" y="2" width="9" height="9" rx="2" fill="#e4572e" opacity=".45"/><rect x="2" y="13" width="9" height="9" rx="2" fill="#e4572e" opacity=".45"/><rect x="13" y="13" width="9" height="9" rx="4.5" fill="#e4572e"/></svg><b>a-chain-goes-forward-a-graph-can-go-back-thats</b><i>DEMO</i></a><!-- pb-shell --><!-- pb-back --><a class="pb-back" id="pb-back" href="https://github.com/anhquanbd2021/a-chain-goes-forward-a-graph-can-go-back-thats" title="Back to the article — a-chain-goes-forward-a-graph-can-go-back-thats">← Article <i>PLAYBOOK</i></a><script>(function(){var a=document.getElementById('pb-back');if(!a)return;var h=location.hostname;if(/^(localhost|127\.0\.0\.1|192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.)/.test(h)){a.href='//'+h+':'+(/^(localhost|127\.0\.0\.1)$/.test(h)?'1234':'30082')+'/microsites/article.html?slug=a-chain-goes-forward-a-graph-can-go-back-thats';}})();</script><!-- pb-back --></body>
+</html>

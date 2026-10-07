@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Loop Line lab — one seeded marketing agent run through a chain, a while-loop, and a graph. Only the topology changes; only the graph gets the run back.">
+  <title>Loop Line — chain vs while vs graph lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400..700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap">
+  <link rel="stylesheet" href="/styles.css">
+<!-- pb-shell --><link rel="stylesheet" href="./pb-shell.css"><!-- pb-shell --><!-- pb-back --><link rel="stylesheet" href="./pb-back.css"><!-- pb-back --></head>
+<body>
+<a class="skip-link" href="#main">Skip to the lab</a>
+<main id="main">
+  <nav aria-label="Primary"><a aria-current="page" href="/">Lab</a><a href="/guide.html">Guide</a><a href="https://github.com/anhquanbd2021/a-chain-goes-forward-a-graph-can-go-back-thats">Source</a></nav>
+  <header class="hero">
+    <div>
+      <p class="eyebrow">Loop Line · one brief, three topologies</p>
+      <h1>A chain goes forward.<br>A graph can go back.</h1>
+      <p class="lede">The same seeded marketing agent — <em>brief → research → plan → create → review</em> — runs three ways. The chain dead-ends on a failed review. The while-loop retries but wipes its state. The graph rides one back-edge and ships. Only the topology changed.</p>
+    </div>
+    <p class="warning"><strong>Educational model.</strong> Every step runs locally in your browser against a deterministic, seeded pipeline — no LLM calls, nothing deployed, timings illustrative.</p>
+  </header>
+
+  <section class="panel controls" aria-labelledby="controls-title">
+    <div class="section-heading">
+      <div><p class="eyebrow">Run configuration</p><h2 id="controls-title">Pick a topology</h2></div>
+      <div class="button-row">
+        <button id="btn-step" type="button">Step</button>
+        <button id="btn-run" type="button">Run to end</button>
+        <button id="btn-reset" type="button" class="ghost">Reset</button>
+        <button id="btn-approve" type="button" class="approve" hidden>Approve — resume run</button>
+      </div>
+    </div>
+    <fieldset class="mode-field">
+      <legend>Executor</legend>
+      <div class="toggle-row" role="radiogroup" aria-label="Executor mode">
+        <label><input type="radio" name="mode" value="chain"> <span><strong>chain</strong> — forward edges only; a DAG. No way back.</span></label>
+        <label><input type="radio" name="mode" value="while"> <span><strong>while</strong> — the chain re-invoked in a loop. Retries exist; memory doesn't.</span></label>
+        <label><input type="radio" name="mode" value="graph" checked> <span><strong>graph</strong> — the chain plus one edge: <code>review → create</code>. Plus <code>interrupt()</code>.</span></label>
+      </div>
+    </fieldset>
+    <p class="muted">Same seeded brief, same seeded drafts (0.42 then 0.91), same node timings. The mode is the only variable.</p>
+  </section>
+
+  <section class="workspace" aria-label="Loop Line workspace">
+    <section class="panel rail-panel" aria-labelledby="rail-title">
+      <div class="section-heading">
+        <div><p class="eyebrow">The rail</p><h2 id="rail-title">Seven stations, one back-edge</h2></div>
+        <span id="run-status" class="badge" role="status" aria-live="polite">idle</span>
+      </div>
+      <div class="rail-wrap">
+        <svg id="rail-svg" aria-hidden="true"></svg>
+        <ol id="rail" class="rail" aria-label="Pipeline nodes"></ol>
+      </div>
+      <p id="event-line" class="event-line mono" role="status" aria-live="polite">Press Step or Run to end — the vermilion arc is the <code>review → create</code> edge only a graph can express.</p>
+
+      <div class="tape-wrap">
+        <p class="eyebrow tape-eyebrow">State tape — the checkpoint</p>
+        <div id="tape" class="tape" role="group" aria-label="Checkpointed run state">
+          <div class="cell" id="cell-attempts"><span class="cell-k">attempts</span><span class="cell-v">0</span></div>
+          <div class="cell" id="cell-research"><span class="cell-k">research</span><span class="cell-v">—</span></div>
+          <div class="cell" id="cell-plan"><span class="cell-k">plan</span><span class="cell-v">—</span></div>
+          <div class="cell" id="cell-draft"><span class="cell-k">draft</span><span class="cell-v">—</span></div>
+          <div class="cell" id="cell-score"><span class="cell-k">score</span><span class="cell-v">—</span></div>
+          <div class="cell" id="cell-ms"><span class="cell-k">ms spent</span><span class="cell-v">0</span></div>
+        </div>
+        <p class="muted">Checkpointed state rides the back-edge in <strong>graph</strong> mode — and visibly blanks on every cold restart in <strong>while</strong> mode. The wiped cells are the argument.</p>
+      </div>
+    </section>
+
+    <section class="panel ledger-panel" aria-labelledby="ledger-title">
+      <div class="section-heading">
+        <div><p class="eyebrow">Trace ledger</p><h2 id="ledger-title">What the run cost</h2></div>
+      </div>
+      <div class="table-wrap" tabindex="0" role="region" aria-label="Span ledger — node, attempt, cycle, ms, status">
+        <table>
+          <thead><tr><th>node</th><th>att.</th><th>cyc.</th><th>ms</th><th>status</th></tr></thead>
+          <tbody id="ledger-body"></tbody>
+        </table>
+      </div>
+      <p id="ledger-totals" class="totals mono">—</p>
+      <p class="muted">Vermilion rows are retry cost — work the back-edge re-ran. In <strong>while</strong> mode the ledger is the only thing that remembers the earlier cycles: the state forgot, the bill didn't.</p>
+    </section>
+  </section>
+
+  <p class="closing-links"><a href="/guide.html">Read the mechanism guide</a><span class="sep" aria-hidden="true">·</span><a href="https://github.com/anhquanbd2021/a-chain-goes-forward-a-graph-can-go-back-thats">Inspect source and tests</a></p>
+</main>
+<script type="module" src="/app.js"></script>
+<!-- pb-shell --><a class="pb-shell" href="https://github.com/anhquanbd2021/a-chain-goes-forward-a-graph-can-go-back-thats" title="a-chain-goes-forward-a-graph-can-go-back-thats — an Article Playbook demo (view source)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2" y="2" width="9" height="9" rx="2" fill="#e4572e"/><rect x="13" y="2" width="9" height="9" rx="2" fill="#e4572e" opacity=".45"/><rect x="2" y="13" width="9" height="9" rx="2" fill="#e4572e" opacity=".45"/><rect x="13" y="13" width="9" height="9" rx="4.5" fill="#e4572e"/></svg><b>a-chain-goes-forward-a-graph-can-go-back-thats</b><i>DEMO</i></a><!-- pb-shell --><!-- pb-back --><a class="pb-back" id="pb-back" href="https://github.com/anhquanbd2021/a-chain-goes-forward-a-graph-can-go-back-thats" title="Back to the article — a-chain-goes-forward-a-graph-can-go-back-thats">← Article <i>PLAYBOOK</i></a><script>(function(){var a=document.getElementById('pb-back');if(!a)return;var h=location.hostname;if(/^(localhost|127\.0\.0\.1|192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.)/.test(h)){a.href='//'+h+':'+(/^(localhost|127\.0\.0\.1)$/.test(h)?'1234':'30082')+'/microsites/article.html?slug=a-chain-goes-forward-a-graph-can-go-back-thats';}})();</script><!-- pb-back --></body>
+</html>
